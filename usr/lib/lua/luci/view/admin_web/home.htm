@@ -1,0 +1,686 @@
+<%
+
+	local util = require "luci.util"
+	local http = require "luci.http"
+	local hct_model_uci = require "luci.model.uci"
+	local hct_uci =  hct_model_uci.cursor()
+	--是否显示过 密码
+	local showpassword_tag = "0"
+	local showpasswordfile = "/etc/app/showpassword_cache"
+	local fd = io.open(showpasswordfile, "r")
+	local showpassword_ln = fd:read("*l")
+	
+	if showpassword_ln ~= "0" then
+		fd = io.open(showpasswordfile, "w")
+		fd:write(showpassword_tag)
+		fd:close()
+	end
+
+	-- 是否连通互联网
+	local is_conn = util.is_internet_connect()
+	local tw = require "tw"
+	
+	local ver  = require "luci.version"
+	local default_lan_ip = ver.default_lan_ip
+	
+	local act = http.formvalue("act")
+	local param = http.formvalue("param")
+	local wifi_status,wifi_device,wifi_ifname,wifi_ssid,wifi_encryption,wifi_channel,wifi_mode,wifi_ssidprefix = util.get_wifi_device_status()
+	local dpwd = luci.sys.user.getdefaultpwd()
+	local sysver = luci.sys.get_sys_ver()
+	local sysid = luci.sys.get_sys_id()
+	local is_defult_password = luci.sys.user.checkpasswd("root", dpwd)
+	
+	local protocol = require "luci.http.protocol"
+	local sys_board = util.get_sys_board()
+
+	
+%><!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="x-ua-compatible" content="IE=9" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="format-detection" content="telephone=no" />
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+<meta http-equiv="expires" content="Wed, 26 Feb 1997 08:21:57 GMT">
+<title><%http.write(hct_uci:get("consumer", "web", "bin_desc"))%>后台</title>
+<link rel="stylesheet" href="<%=resource%>/web/css/style.css?v=<%=ver.svnRevNum%>" type="text/css"/>
+<style type="text/css">
+a{ behavior:url(<%=resource%>/web/images/blur.htc);} /* 批量去除链接焦点 */
+#weixin_img {position: absolute;margin-top: 318px;margin-left: 315px; display:none; cursor:pointer;}
+</style>
+<!--[if lt IE 9]>
+<script type="text/JavaScript" src="<%=resource%>/web/js/curvycorners.src.js?v=<%=ver.svnRevNum%>"></script>
+<![endif]-->
+<script type="text/javascript">
+	var global_lan_ipv4 = '';
+	var global_lan_ipv4_mask = '';
+	var global_lan_ipv6 = '';
+	var global_lan_ipv6_mask = '0';
+	var global_lan_mac = '';
+	var global_upgrade_info = null;	//wan_info api json对象
+	
+	var global_wifi_status = '<%=wifi_status%>';
+	var global_wifi_device = '<%=wifi_device%>';
+	var global_wifi_ifname = '<%=wifi_ifname%>';
+	var global_wifi_ssid   = "<%=luci.http.urlencode(wifi_ssid)%>";
+	var global_wifi_ssid_show   = "<%=luci.http.urlencode(wifi_ssidprefix..wifi_ssid)%>";
+	var global_wifi_encryption	= '<%=wifi_encryption%>';
+	var global_wifi_channel 	= '<%=wifi_channel%>';
+	var global_wifi_mode 		= '<%=wifi_mode%>';
+
+	var global_wan_type = '';
+	var global_wan_mac  = '';
+	var global_wan_ipv4 = '';
+	var global_wan_ipv4_mask = '';
+	var global_wan_ipv6 = '';
+	var global_wan_ipv6_mask = '0';
+</script>
+<%
+http.write(util.inc_html_header_end())
+%>
+</head>
+<body id="hct_main">
+
+<script type="text/javascript">//<![CDATA[
+	var URL_ROOT_PATH = "<%=luci.dispatcher.build_url("")%>";
+	var i18_connection = "<%="连接中..."%>";
+	var i18_second = "<%="秒"%>";
+	var i18_hour = "<%="小时"%>";
+	var i18_minute = "<%="分钟"%>";
+	var i18_day = "<%="天"%>";
+ //]]></script>
+<script type="text/javascript" src="<%=resource%>/web/js/jquery-1.8.1.min.js?v=<%=ver.svnRevNum%>"></script>
+<script type="text/javascript" src="<%=resource%>/web/js/artDialog/jquery.artDialog.js?skin=blueskin"></script>
+<script type="text/JavaScript" src="<%=resource%>/web/js/jquery.autocomplete.js?v=<%=ver.svnRevNum%>"></script>
+<script type="text/JavaScript" src="<%=resource%>/web/js/jquery.autocomplete.data.js?v=<%=ver.svnRevNum%>"></script>
+<script type="text/javascript" src="<%=resource%>/web/js/jquery.cookie.min.js?v=<%=ver.svnRevNum%>"></script>
+<script type="text/javascript" src="<%=resource%>/interface.js?v=<%=ver.svnRevNum%>"></script>
+<script src="<%=resource%>/web/js/artDialog/plugins/iframeTools.source.js?v=<%=ver.svnRevNum%>"></script>
+<script src="<%=resource%>/web/js/util.js?v=<%=ver.svnRevNum%>"></script>
+<script type="text/javascript">
+	var light_timer_arr = new Array();
+	var luci_url_base = "<%=luci.dispatcher.build_url("admin_web")%>/";
+	function is_internet_connect(){
+		var result = false;
+		var request_date = {}; 
+		$.getJSON("<%=luci.dispatcher.build_url("api", "system","is_internet_connect")%>",request_date,function(rsp) 
+		{ 
+			result = rsp.isconn;
+		})
+		return result;
+	}
+	
+	$(function(){
+		/* 	无线设置 */
+		$("#set_wifi").click(function(){
+			open_windows("set_wifi");
+		})		
+		
+		/* 	外网设置 */
+		$("#set_network").click(function(){
+			var guide_mode = $("#guide_mode").val();
+			if(guide_mode == 1){
+				open_windows("set_network_autotype");
+			} else {
+				open_windows("set_network");
+			}
+		})	
+		
+		/* 系统状态 */
+		$("#state").click(function(){
+			open_windows("state");
+		})	
+		
+		/* 高级设置 */
+		$("#options").click(function(){
+			open_windows("options");
+		})
+		
+		$("#traffic_info").click(function(){
+			open_windows("traffic_info");
+		})
+		/* 	修改密码*/
+		$("#system_config").click(function(){
+			open_windows("system_config");
+		})
+		
+		/* 	列无线设备列表*/
+		$("#devices").click(function(){
+			open_windows("devices");
+		})
+		
+		/* 重新启动 */
+		$("#reboot").click(function(){
+			reboot_window();
+		});
+		
+	})
+	
+	function reboot_window(){
+		art.dialog({
+			title:false,
+		    content: '是否确定重启路由器，重启将断开和路由器的连接！',
+		    icon: 'warning',
+		    id: "wating_box",
+		    ok: function(){
+		    	
+		    	this.close();
+	    		global_dorestart("重启路由器","<%=default_lan_ip%>",true);
+	    		
+		    	$.getJSON("<%=luci.dispatcher.build_url("api", "system","reboot")%>",{},function(rsp) 
+		    	{
+		    		if(rsp.code==0){
+		    			
+		    		}  else {
+		    			art.dialog({icon:"error",title:false,content:"重启失败"}).lock().time(4);
+			    		this.close();
+		    		}
+		    	});
+		        return false;
+		    },
+		    okVal: "现在重启", 
+		    cancel: function(){
+		        this.close();
+		        return false;
+		    }
+		}).lock();
+	}
+	
+	function reset_window(){
+		art.dialog({
+			title:false,
+		    content: '是否确定恢复出厂设置，将断开和路由器的连接！',
+		    icon: 'warning',
+		    id:"wating_box",
+		    ok: function(){
+		    	
+		    	this.close();
+		    	global_dorestart("恢复出厂设置","<%=default_lan_ip%>",true);
+		    	
+		    	$.getJSON("<%=luci.dispatcher.build_url("api", "system","reset_all")%>",{},function(rsp) 
+		    	{
+		    		if(rsp.code==0){
+		    			
+		    		}  else {
+		    			art.dialog({icon:"error",title:false,content:"恢复出厂设置失败"}).lock().time(4);
+			    		this.close();
+		    		}
+		    	});
+		        return false;
+		    },
+		    okVal: "恢复出厂设置", 
+		    cancel: function(){
+		        this.close();
+		        return false;
+		    }
+		}).lock();
+	}
+	
+	function open_windows(act,param){
+		if(art.dialog.list['func_box']){
+			art.dialog.list['func_box'].close();
+		}
+		var guide_mode = $("#guide_mode").val();
+		if (act=="set_wifi")
+        {
+			art.dialog.open('<%=luci.dispatcher.build_url("admin_web","wifi")%>?guide_mode='+guide_mode, {id:"func_box", title: '无线设置',width:600, height:480, lock:true,drag: false});
+        } else  if (act=="set_network") {
+			art.dialog.open('<%=luci.dispatcher.build_url("admin_web","network")%>?guide_mode='+guide_mode+'&autotype='+param, {id:"func_box", title: '外网设置',width:640, height:550, lock:true,drag: false});
+        } else  if (act=="set_network_autotype") {
+			art.dialog.open('<%=luci.dispatcher.build_url("admin_web","network","setup","autowantype")%>?guide_mode='+guide_mode, {id:"func_box", title: '外网设置',width:640, height:450, lock:true,drag: false});
+        } else  if (act=="application") {
+			//windows.open();
+        } else  if (act=="state") {
+			art.dialog.open('<%=luci.dispatcher.build_url("admin_web","info")%>', {id:"func_box", title: '系统状态',width:515, height:580, lock:true,drag: false});
+        } else  if (act=="upgrade") {	/* 系统升级 */
+        	art.dialog.open('<%=luci.dispatcher.build_url("admin_web", "system","upgrade")%>', {id:"func_box", title: '系统升级',width:780, height:570, lock:true,drag: false});
+        } else  if (act=="options") {
+        	if(param){
+        		art.dialog.open(luci_url_base+param, {id:"func_box", title: '高级设置',width:780, height:590, lock:true,drag: false});
+        	} else {
+        		art.dialog.open('<%=luci.dispatcher.build_url("admin_web", "network", "setup", "lan")%>', {id:"func_box", title: '高级设置',width:780, height:590, lock:true,drag: false});
+        	}
+        } else  if (act=="system_config") {
+			art.dialog.open('<%=luci.dispatcher.build_url("admin_web","system")%>', {id:"func_box", title: '修改密码',width:500, height:450, lock:true,drag: false});
+        } else  if (act=="system_plug") {
+			art.dialog.open('<%=luci.dispatcher.build_url("admin_web","plugin","mentohust")%>', {id:"func_box", title: '插件',width:780, height:520, lock:true,drag: false});
+        } else  if (act=="devices") {
+			art.dialog.open('<%=luci.dispatcher.build_url("admin_web","network","devices_list")%>', {id:"func_box", title: '连接设备列表',width:800, height:450, lock:true,drag: false});
+        } else if (act=="mac_filter") {
+        	art.dialog.open('<%=luci.dispatcher.build_url("admin_web","wifi","setup","mac_filter")%>', {id:"func_box", title: 'mac 地址访问限制',width:780, height:570, lock:true,drag: false});
+        } else if (act=="wifi_channel"){
+        	art.dialog.open('<%=luci.dispatcher.build_url("admin_web","wifi","setup","channel")%>', {id:"func_box", title: '频道设置',width:780, height:570, lock:true,drag: false});
+        } else if (act=="traffic_info"){
+        	art.dialog.open('<%=luci.dispatcher.build_url("admin_web","traffic","index")%>', {id:"func_box", title: '实时流量',width:790, height:480, lock:true,drag: false});
+        } else if (act=="net_detect"){
+        	art.dialog.open('<%=luci.dispatcher.build_url("admin_web","system","net_detect")%>?type=inside', {id:"func_box", title: '网络诊断',width:620, height:600, lock:true,drag: false});
+        }
+	}
+</script>
+<script type="text/javascript">
+
+//$.ajaxSettings.async = false;
+$(function(){
+	<%if act ~= "" and act ~= nil then
+		local act_p = '"'..act..'"'
+		if param ~= "" and param ~= nil then
+			
+			act_p = act_p .. ',"'..param..'"'
+		end 
+		%>
+		open_windows(<%=act_p%>);
+		<%
+	end %>
+	
+	getWifiInfo();
+	getWanInfo();
+	getLanInfo();
+	getDeviceInfo()
+
+	check_upgrade();
+	setTimeout("check_network_status()",3000);
+	//alert(123);
+});
+
+
+//通用提示，重启并自动连接的。
+//return_ip 修改 lan ip 的时候用用于重置 ip
+function global_dorestart(action_cont,return_ip,need_flash){
+	if (typeof(return_ip)=="string") {
+		var ip = return_ip;
+	} else {
+		var ip = global_lan_ipv4;
+		if(ip==""){
+			ip = window.location.host;
+		}
+	};
+	var time_ts = (+new Date());
+	
+	art.dialog({id:"wating_box",icon:"wait",title:false,content:action_cont+'，等待自动连接跳转...'}).lock();
+	
+	//为等待彻底关闭服务，10秒后再开始自动检测
+	setTimeout(function(){
+		autoLink("http://"+ip+"/hct-static/hct/web/images/logo_grey.png",{
+			"success":function(){
+				if(art && art.dialog.list['wating_box']){
+					art.dialog.list['wating_box'].close();
+				}
+				art.dialog({icon:"succeed",id:"wating_box",title:false,content:'操作生效,重启成功！'}).lock().time(4);
+				if(need_flash){
+					window.setTimeout('window.location.href="http://'+ip+'";',3000); 
+				}
+			},"error":function(){
+				//error	
+				var usetime = Math.round(((+new Date()) - time_ts)/1000);
+				art.dialog.list['wating_box'].content(action_cont+", <%="等待自动跳转..."%> 用时"+usetime+i18_second);
+
+			},"timeout":function(){
+				if(art && art.dialog.list['wating_box']){
+					art.dialog.list['wating_box'].close();
+				}
+				art.dialog({icon:"warning",id:"wating_box",title:false,content:'<%="自动连接WIFI路由器失败，请检查无线或者网线是否连接正确。"%>',
+				ok:function(){
+					top.location.href = 'http://'+ip+URL_ROOT_PATH;
+				},
+				okVal: "手动连接", 
+				cancel: function(){
+			        this.close();
+			        return false;
+			    }
+				}).lock();
+			}},150);
+	},15000);
+}
+
+
+function getWifiInfo(){
+	//取最后一个
+	//wifi/get_status_list 
+	var request_date = {}; 
+	if(global_wifi_status=='1'){	
+			if(global_wifi_encryption=='none'){
+				var msgs = "";
+				$("#wifi-alert").show().attr("title",msgs);
+			}
+	}else{
+		var msgs = "WIFI 未开启";
+		$("#wifi-alert").show().attr("title",msgs);
+	}
+}
+
+function reboot(){
+	//system/reboot 
+
+}
+var light_lan_timer = [0,0,0]
+function getLanInfo(){
+	//network/get_lan_info 
+	$.getJSON("<%=luci.dispatcher.build_url("api", "network","get_lan_info")%>",{},function(rsp) 
+	{ 
+		if(rsp.code == 0){
+			light_clear("1");
+			light_clear("2");
+			light_clear("3");
+			light_clear("4");
+			clearInterval(light_lan_timer[1]);
+			clearInterval(light_lan_timer[2]);
+			clearInterval(light_lan_timer[3]);
+			clearInterval(light_lan_timer[4]);
+				
+			if(rsp.ipv6 && rsp.ipv6[0]){
+				global_lan_ipv6 = rsp.ipv6[0].ip;
+				global_lan_ipv6_mask = rsp.ipv6[0].mask;
+			}
+			if(rsp.ipv6 && rsp.ipv4[0]){
+				global_lan_ipv4 = rsp.ipv4[0].ip;
+				global_lan_ipv4_mask = rsp.ipv4[0].mask;
+			}
+			if(rsp.mac){
+				global_lan_mac = rsp.mac 
+			}
+			for(var i in rsp.is_lan_link){
+			//i 为索引数字
+				var lan_index = i.substr(4,1);
+				var lan_status = rsp.is_lan_link[i];
+				if(lan_status == 1){
+					light_lan_timer[lan_index] = setInterval("light_flash('"+lan_index+"');",500);
+				}
+			}
+			
+		}
+	})
+}
+
+function set_light(pic){
+	if(pic.hasClass('hct_offline')){
+		pic.removeClass('hct_offline');
+		pic.addClass('hct_online');
+	}else{
+		pic.addClass('hct_offline');
+		pic.removeClass('hct_online');
+	}
+}
+
+function light_flash(index){
+	//alert(index);
+	var ele = $('.hct_lan'+index);
+	set_light(ele);
+}
+function light_clear(index){
+	//alert(index);
+	var ele = $('.hct_lan'+index);
+	ele.addClass('hct_offline');
+	ele.removeClass('hct_online');
+}
+
+function getDeviceInfo(){
+	//wifi/get_connected_devices_list 
+	$.getJSON("<%=luci.dispatcher.build_url("api", "network","device_list")%>",{},function(rsp) 
+	{ 
+		if(rsp.code == 0){
+			set_devices_cnt(rsp.devices.length);
+		}
+	});
+}
+
+function getWanInfo(){
+	var is_conn_now = <% if not is_conn then http.write("false") else http.write("true") end %>;
+	var msgs="";
+	
+	//联通正常检查
+	if (!is_conn_now){
+		msgs = msgs+"未连通互联网 请检查线路, 或者核对 pppoe 用户名密码";
+		$("#network-alert").show().attr("title",msgs);
+		$("#set_network").removeClass("ok");
+		$(".stream").hide();
+	}else{
+		$("#network-alert").hide().attr("title","");
+		$("#set_network").addClass("ok");
+		$(".stream").show();
+	}
+	
+	check_wan_info();
+}
+
+function check_wan_info(){
+	//network/get_wan_info 
+	$.getJSON("<%=luci.dispatcher.build_url("api", "network","get_wan_info")%>",{},function(rsp) 
+	{
+		if(rsp.code != 0){
+			return;
+		}
+
+		if (rsp.macaddr && rsp.macaddr != ""){
+			global_wan_mac = rsp.macaddr.toUpperCase();
+		}else if(rsp.mac && rsp.mac!=""){
+			global_wan_mac =rsp.mac.toUpperCase();
+		}
+		
+		//alert(global_wan_mac);
+	
+		var global_wan_type_tmp = rsp.type.toUpperCase();
+		
+		$.getJSON("<%=luci.dispatcher.build_url("api", "wifi","get_bridge")%>",{},function(rsp) 
+		{ 
+			if(rsp.status == 1){
+				global_wan_type = "无线中继 DHCP";
+			} else {
+				global_wan_type = global_wan_type_tmp
+			}
+		})
+	
+		if(rsp.ipv4 && rsp.ipv4[0] && rsp.ipv4[0].ip){
+			global_wan_ipv4 = rsp.ipv4[0].ip;
+			global_wan_ipv4_mask = rsp.ipv4[0].mask;
+		}
+		if(rsp.ipv6){
+			for (var i=0;i<rsp.ipv6.length;i++){
+				if(rsp.ipv6[i].type == 'Global'){
+					global_wan_ipv6 = rsp.ipv6[i].ip;
+					global_wan_ipv6_mask = rsp.ipv6[i].mask;
+				}
+			}
+		}
+		
+		if(!rsp.is_eth_link){
+			msgs = "WAN 未连接网线或断开连接";
+			$("#network-alert").show().attr("title",msgs);
+			$("#set_network").removeClass("ok");
+			$(".stream").hide();
+		}
+	});
+}
+
+//刷新检查更新
+function check_upgrade(){
+	var msgs = new Array();
+	var request_date = {}; 
+	$.getJSON("<%=luci.dispatcher.build_url("api", "system","upgrade_check")%>",request_date,function(rsp) 
+	{ 
+		global_upgrade_info = rsp;
+
+		//$("#loading3").hide();
+		if (rsp.need_upgrade == 1){
+			msgs[0] = "有可用更新";
+		}
+		if (msgs.length>0) {
+			$("#system-alert").show().attr("title",msgs);
+		} else {
+			$("#system-alert").hide().attr("title","");
+		}
+	})
+}
+
+//检查网络状态
+function check_network_status(){
+	//alert(333);
+	$.ajax({
+		  url: "<%=luci.dispatcher.build_url("api", "system","check_network_connect")%>",
+		  cache: false,
+		  dataType: "json",
+		  success: function(rsp){
+			  if(rsp){
+				set_wan_status(rsp.isconn);
+				getLanInfo();
+				
+				if(rsp.wifi_status=='1'){	
+					if(rsp.wifi_encryption=='none'){
+						var msgs = "";
+						$("#wifi-alert").show().attr("title",msgs);
+					} else {
+						$("#wifi-alert").hide().attr("title","");
+					}
+				}else{
+					var msgs = "WIFI 未开启";
+					$("#wifi-alert").show().attr("title",msgs);
+				}
+			  }
+			  setTimeout("check_network_status()",3000);
+		  },
+		  error :function(){
+			  if (art.dialog.list['func_box'] || art.dialog.list['wating_box']){
+				  setTimeout("check_network_status()",1000*10);
+			  }else{
+				  art.dialog({
+						title:false,
+					    content: '无法连接到路由器，请检查网络连接情况！',
+					    icon: 'warning',
+					    ok: function(){
+					    	top.location.reload();
+					        return false;
+					    },
+					    okVal: "刷新页面 ", 
+					    cancel: function(){
+					        this.close();
+					        return false;
+					    }
+					}).lock();
+			  }
+		  }
+	});
+}
+function set_wan_status(isconn){
+	var wan_now_status = $("#network-alert").attr("title")=="";
+	if(wan_now_status==isconn){
+		return;
+	}
+	if(isconn){
+		$("#network-alert").hide().attr("title","");
+		$("#set_network").addClass("ok");
+		$(".stream").show();
+	}else{
+		$("#network-alert").show().attr("title","WAN 未连接网线或断开连接");
+		$("#set_network").removeClass("ok");
+		$(".stream").hide();
+	}
+}
+function set_lan_status(lan_index,isconn){
+	if(isconn){
+		if(light_lan_timer[lan_index] && light_lan_timer[lan_index]>0 ){
+			return;	
+		}else{
+			light_lan_timer[lan_index] = setInterval("light_flash('"+lan_index+"');",500);
+		}
+	}
+}
+
+function set_devices_cnt(devices_cnt){
+	if(devices_cnt >0 ){
+		$("#devices em").html(devices_cnt);
+		$("#devices_loading").hide();
+	} else {
+		$("#devices em").html(0);
+	}
+}
+
+</script>
+
+
+<!-- 
+GUIDE
+TODO: IE6 
+-->
+
+<script type="text/javascript">
+
+//刷新页面
+function reloadpage3s(url){
+	if(url){
+		window.setTimeout('window.location.href="'+url+'"',0); 
+	}else {
+		window.setTimeout('window.location.href="<%=luci.dispatcher.build_url()%>";',0); 
+	}
+}
+</script>
+
+<div id="guide_mask" style="display:none; width: 100%; height: 100%; position: absolute; z-index: 100; top: 0px; left: 0px; overflow: hidden; ">
+	<div style="height: 100%; background-color: rgb(0, 0, 0); opacity:0.6; filter:alpha(opacity=90); z-index: 100; background-position: initial initial; background-repeat: initial initial; ">
+	</div>
+</div>
+
+<div id="guide_mask_close_action" style="display:none; width: 100%; height: 100%; position: absolute; z-index: 100; top: 0px; left: 0px; overflow: hidden; ">
+	<div style="height: 100%; background-color: rgb(0, 0, 0); opacity:0.6; filter:alpha(opacity=90); z-index: 100; background-position: initial initial; background-repeat: initial initial; ">
+	</div>
+</div>
+
+<!-- 
+GUIDE END
+-->
+<%
+http.write(util.inc_html_body_end())
+%>
+
+	<div class="hct_wrap">
+		<div class="hct_header">
+			<div class="hct_logo" title="Hct WiFi">Hct WiFi</div>
+			<div class="hct_nav">
+				<ul>
+					<li><a href="#" id="reboot" class="hct_restart" title="重启路由器">重启路由器</a></li>
+					<li><a href="<%=luci.dispatcher.build_url("admin_web","logout")%>" class="hct_exit" title="退出">退出</a></li>
+				</ul>
+			</div>
+		</div>
+		<div class="hct_main">
+			<div class="hct_main_container">
+				<ul>
+					<li><a href="#" id="set_network" class="hct_step_01" title="外网设置">外网设置</a></li>
+					<li><a href="#" id="set_wifi" class="hct_step_02" title="无线设置">无线设置</a></li>
+					<li><a href="#" id="system_config" class="hct_step_03" title="密码修改">密码修改</a></li>
+					<li><a href="<%=luci.dispatcher.build_url("admin_web","system","net_detect")%>" id="system_netdetect" class="hct_step_04" target="_blank" title="网络诊断">网络诊断</a></li>
+				</ul>
+				<div class="hct_router_status">
+					<ul>
+						<li class="hct_wan">WAN</li>
+						<li class="hct_lan1">LAN1</li>
+						<li class="hct_lan2">LAN2</li>
+						<li class="hct_lan3">LAN3</li>
+						<li class="hct_lan4">LAN4</li>
+					</ul>
+				</div>
+			</div>
+			<div class="hct_nav">
+				<ul>
+					<li><a href="<%http.write(hct_uci:get("consumer", "web", "url"))%>" target="_blank" class="hct_nav_01" title="网站首页">网站首页</a></li>
+					<li><a href="#" id="state" class="hct_nav_02" title="系统状态">系统状态</a></li>
+					<li><a href="#" id="options" class="hct_nav_03" title="高级设置">高级设置</a></li>
+					<li><a href="#" id="traffic_info" class="hct_nav_04" title="实时流量">实时流量</a></li>
+				</ul>
+			</div>
+		</div>
+	</div>
+	<div class="hct_footer">
+		<p class="system_info">系统版本 : <%=sysver%><span class="pipe"></span> 
+			路由ID : <span id="buttonid"><%=sysid%></span><span class="pipe"></span>
+			MAC : <span id="buttonmac"><%http.write(tw.get_mac())%></span><span class="pipe"></span>
+			服务热线 : <span id="iphonenum"><%http.write(hct_uci:get("consumer", "web", "phone"))%></span>
+		</p>
+		<p class="bottom_menu">
+				<%http.write(hct_uci:get("consumer", "web", "copyright_desc"))%>
+				<span class="pipe">|</span><a href="<%http.write(hct_uci:get("consumer", "web", "url"))%>" target="_blank">官方网站</a>
+		</p>
+	</div>
+</body>
+
+</html>

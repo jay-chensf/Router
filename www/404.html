@@ -1,0 +1,79 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="format-detection" content="telephone=no">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+<meta http-equiv="expires" content="Wed, 26 Feb 1997 08:21:57 GMT">
+<title></title>
+<style type="text/css">
+body {
+	text-align: center;
+	background-color: #008EC7;
+}
+
+#infobox{
+	width: 610px;
+	margin: 30px auto 0;
+	padding: 20px;
+	background: #F1FAFE;
+	-webkit-border-radius: 10px;
+	-moz-border-radius: 10px;
+	border-radius: 10px;
+	min-width: 618px;
+}
+a {
+	color: #36AAD6;
+	text-decoration: none;
+}
+
+body{
+line-height: 36px;
+margin-right: 8px;
+font-size: 16px;
+color: #999;
+font-family: Microsoft Yahei;
+position: relative;
+}
+</style>
+</head>
+<body>
+	<div id="infobox">
+		路由器后台错误！自动跳转...<span id="totalSecond">5</span>秒.  <a href="/">点击返回后台首页</a>
+	</div>
+	 <!--这里定义倒计时开始数值-->
+
+
+ <!--定义js变量及方法-->
+<script language="javascript" type="text/javascript">
+var second = document.getElementById('totalSecond').textContent;
+
+if (navigator.appName.indexOf("Explorer") > -1)
+{
+second = document.getElementById('totalSecond').innerText; 
+} else
+{
+second = document.getElementById('totalSecond').textContent; 
+}
+
+setInterval("redirect()", 1000); 
+function redirect()
+{
+if (second < 0)
+{
+<!--定义倒计时后跳转页面-->
+location.href = '/'; 
+} else
+{
+if (navigator.appName.indexOf("Explorer") > -1)
+{
+document.getElementById('totalSecond').innerText = second--; 
+} else
+{
+document.getElementById('totalSecond').textContent = second--; 
+}
+}
+}
+</script>
+</body>
+</html>

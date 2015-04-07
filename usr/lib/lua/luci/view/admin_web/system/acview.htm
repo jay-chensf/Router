@@ -1,0 +1,116 @@
+<%
+
+
+local mode = luci.http.formvalue("mode")
+local ver  = require "luci.version"
+local adv_menu = luci.util.get_adv_menu()
+local request_uri = luci.http.getenv("REQUEST_URI")
+local board_type = luci.util.get_sys_board()
+local sysver = luci.sys.get_sys_ver()
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="format-detection" content="telephone=no" />
+<title>WiFi 路由器</title>
+<link rel="stylesheet" href="<%=resource%>/web/css/style.css?v=<%=ver.svnRevNum%>" type="text/css"/>
+<script type="text/javascript" src="<%=resource%>/web/js/jquery-1.8.1.min.js?v=<%=ver.svnRevNum%>"></script>
+<script type="text/javascript" src="<%=resource%>/web/js/artDialog/jquery.artDialog.js?skin=blueskin"></script>
+<script src="<%=resource%>/web/js/artDialog/plugins/iframeTools.source.js?v=<%=ver.svnRevNum%>"></script>
+<style type="text/css">
+	.loading-bar{ width: 240px; margin: 0 auto; padding: 1px; border: 1px solid #ddd;}
+	.loading-bar .text{ position: absolute; width: 240px; height: 16px; line-height: 16px; display: block; text-align: center; font-size: 10px; font-family: Arial; color: #666;}
+	.percent{ height: 16px; line-height: 16px;background: #eee; text-align: center;}
+</style>
+</head>
+<body>
+<%
+if mode ~= "out" then
+%>
+<div class="title">
+	<h2>高级设置<i>设置路由器安全 , 及其他高级设置</i></h2>
+</div>
+<%
+end
+%>
+
+<%
+if mode ~= "out" then
+%>
+<div class="menu">
+	<% luci.util.output_adv_menu() %>
+</div>
+<%
+end
+%>
+<div class="box <%if mode ~= "out" then%>setup_box<%end%>" style="text-align: center;">
+	<div>
+	<%
+	if mode == "out" then
+	%>
+	<img src="<%=resource%>/web/images/logo_grey.png"><br><br><br>
+	<%
+	end
+	%>
+	
+	<b style="font-size:20px">AP状态管理</b><br></div>
+
+<script type="text/javascript">
+
+function get_ap_list(){
+	var request_date = {}; 
+	$.getJSON("<%=luci.dispatcher.build_url("api", "system","get_ap_list")%>",request_date,function(rsp) 
+	{ 
+		if(rsp.code == 0){
+			
+		} else {
+			
+		}
+	})
+}
+
+$(function(){
+	//get_ap_list()
+})
+
+</script>
+<%
+local net = require "hctwifi.net"
+local devicesResp = net.get_ap_list()
+%>
+<div style="padding:10px 0 10px 0;display:none;" id="dhcp_list_box">
+	<center>
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bordercolor="#f0f0f0">
+        <tr align="center">
+        	<th width="50" scope="col" bgcolor="#f4f4f4">编号</th>
+            <th width="110" scope="col" bgcolor="#f4f4f4">MAC</th>
+            <th width="100" scope="col" bgcolor="#f4f4f4">IP</th>
+            <th width="40" scope="col" bgcolor="#f4f4f4">信道</th>
+            
+        </tr>
+        <%
+        for i,v in ipairs(devicesResp) do
+        %>
+        <tr align="center">
+        	<td><%=i%></td>
+            <td><%=v['mac']%></td>
+            <td><%=v['ip']%></td>
+            <td><%=v['channel']%></td>
+        </tr>
+        <%
+        end
+        %>
+    </table>
+	</center>
+
+
+</div>
+</div>
+
+<script>
+$("#dhcp_list_box").show();
+
+</script>
+</body>
+</html>

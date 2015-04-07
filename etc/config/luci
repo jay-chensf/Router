@@ -1,0 +1,30 @@
+
+config 'core' 'main'
+	option 'lang' 'auto'
+	option 'mediaurlbase' '/hct-static/hct'
+	option 'resourcebase' '/hct-static/hct'
+
+config 'extern' 'flash_keep'
+	option 'uci' '/etc/config/'
+	option 'dropbear' '/etc/dropbear/'
+	option 'openvpn' '/etc/openvpn/'
+	option 'passwd' '/etc/passwd'
+	option 'opkg' '/etc/opkg.conf'
+	option 'firewall' '/etc/firewall.user'
+	option 'uploads' '/lib/uci/upload/'
+
+config 'internal' 'languages'
+	option 'zh_cn' '中文简体'
+	option 'en' 'English'
+
+config 'internal' 'sauth'
+	option 'sessionpath' '/tmp/luci-sessions'
+	option 'sessiontime' '3600'
+
+config 'internal' 'ccache'
+	option 'enable' '1'
+
+config 'internal' 'themes'
+	option 'Turbo' '/hct-static/hct'
+
+

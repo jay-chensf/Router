@@ -1,0 +1,152 @@
+<%
+	local util = require "luci.util"
+	local http = require "luci.http"
+
+	local urlbackReq = util.fliter_unsafe(http.formvalue("urlback")	)
+	local fromsite = http.formvalue("fromsite")
+	
+	local hct_model_uci = require "luci.model.uci"
+	local hct_uci =  hct_model_uci.cursor()
+
+
+	if urlbackReq == nil or urlbackReq==""  then
+		urlbackReq = http.getenv("HTTP_REFERER")
+	end
+	local tw = require "tw"
+	local ver  = require "luci.version"
+	
+	--是否弹出协议
+	local rv = { }
+	local nfs = require "nixio.fs"
+	local io = require "io"
+	local agree_status = 1
+	
+	--是否显示初始 密码
+	local showpasswordfile = "/etc/app/showpassword_cache"
+	local fd = io.open(showpasswordfile, "r")
+	local showpassword_ln = fd:read("*l")
+	
+	local loginfail = false
+ 	if fuser then 
+		-- lock 数+1
+		luci.util.up_loginlock()
+		loginfail = true
+	end
+	local dpwd = luci.sys.user.getdefaultpwd()
+	local sysver = luci.sys.get_sys_ver()
+	local sysid = luci.sys.get_sys_id()
+	local is_defult_password = luci.sys.user.checkpasswd("root", dpwd)
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="format-detection" content="telephone=no" />
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+<meta http-equiv="expires" content="Wed, 26 Feb 1997 08:21:57 GMT">
+<title><%http.write(hct_uci:get("consumer", "web", "bin_desc"))%>后台</title>
+<style type="text/css">
+a{ behavior:url(<%=resource%>/web/images/blur.htc);} /* 批量去除链接焦点 */
+</style>
+<script type="text/javascript" src="<%=resource%>/web/js/jquery-1.8.1.min.js?v=<%=ver.svnRevNum%>"></script>
+<script type="text/javascript" src="<%=resource%>/web/js/jquery.cookie.min.js?v=<%=ver.svnRevNum%>"></script>
+<script type="text/javascript" src="<%=resource%>/interface.js?v=<%=ver.svnRevNum%>"></script>
+<!--[if lt IE 9]>
+<script type="text/JavaScript" src="<%=resource%>/web/js/curvycorners.src.js?v=<%=ver.svnRevNum%>"></script>
+<![endif]-->
+<script src="<%=resource%>/web/js/util.js?v=<%=ver.svnRevNum%>"></script>
+<script type="text/javascript">
+//如果是内部页，父级页面刷新,登录
+if(window.top!=this){ 
+	 parent.location.reload();
+}
+
+</script>
+<link rel="stylesheet" href="<%=resource%>/web/css/style.css?v=<%=ver.svnRevNum%>" type="text/css"/>
+<%
+http.write(util.inc_html_header_end())
+%>
+</head>
+<body id="login">
+<!-- this_line_is_for_loginpage_cache_donot_delete -->
+<div id="loginbox" style="position:relative;">
+	<form id="loginform" name="loginform" method="post" action="<%=pcdata(http.getenv("REQUEST_URI"))%>" onsubmit="return check_form(this);"> 
+	<% if not luci.util.is_loginlock() then %>
+		<input autocomplete="off"  type="hidden" name="username" value="admin" />
+		<label><%http.write(hct_uci:get("consumer", "web", "web_desc"))%><br></label>
+		<label>路由器密码</label><input autocomplete="off" class="txt <%- if fuser then %> error<% end -%>" type="<% if showpassword_ln ~= '0' then %>text<% else %>password<% end %>" name="password" id="input_password1" <% if showpassword_ln ~= '0' then %>value="<%=luci.sys.user.getdefaultpwd()%>"<% end %>/>
+		<input type="submit" id="submit_btn" value="登录" class="btn" />
+		<img style="display:none;position:absolute; padding-top: 10px;" id="loading2" src="<%=resource%>/web/js/artDialog/skins/icons/loading.gif" alt="<%http.write(hct_uci:get("consumer", "web", "bin_desc"))%>" />
+		<br>
+		<%- if loginfail then %>
+		<br>
+		<span style="font-size:12px;color:red;"><%="密码错误！请重试。"%> 
+		<% if tonumber(luci.util.get_loginlock()) > 0 then 
+			local resttime = 10 - luci.util.get_loginlock()
+		%>
+			已经错误 <%=luci.util.get_loginlock()%> 次 , 还可以尝试 <%=resttime%> 次
+		<% end %>
+		<% end -%>
+		</span>
+		<% if tonumber(fromsite)== 1 then %>
+		<br>
+		( 成功登录后将自动绑定 )
+		<% end %>
+		<% if showpassword_ln ~= '0' then %>
+			<br>初始密码为  <span style="font-size:16px;color:red;"><%=dpwd%></span>，登录后点击右上  "修改密码"，修改后会使路由器更安全<br>
+		<% else %>
+			<%if is_defult_password then %>
+			<br><img src="<%=resource%>/web/images/alert-icon.png" height="15" /> 密码为 <%=dpwd%>, 不安全, 请登录后点击右上  "修改密码"
+			<%end%>
+		<% end %>
+	<% else %>
+		<p class="tips"><%="密码错误！请重试。"%> 
+		<% if tonumber(luci.util.get_loginlock()) > 0 then %>
+			<%="密码输入错误次数过多，请拔出电源，5秒后接通。重启路由"%>
+		<% end %>
+		</p>
+	<% end %>
+	</form>
+</div> 
+
+<div id="footer">
+	<div class="wrap">
+		<p class="system_info">系统版本 : <%=sysver%><span class="pipe"></span>
+		路由ID : <span id="buttonid"><%=sysid%></span><span class="pipe"></span>
+		MAC : <span id="buttonmac"><%http.write(tw.get_mac())%></span><span class="pipe"></span>
+		服务热线  : <span id="iphonenum"><%http.write(hct_uci:get("consumer", "web", "phone"))%></span></p>
+		<p class="bottom_menu">
+			<%http.write(hct_uci:get("consumer", "web", "copyright_desc"))%>
+			<span class="pipe">|</span><a href="<%http.write(hct_uci:get("consumer", "web", "url"))%>" target="_blank">官方网站</a>
+		</p>
+	</div>
+</div>
+
+
+<script type="text/javascript">
+	function check_form(obj){
+		
+		if(obj.password.value==""){
+			obj.password.focus();
+			return false;
+		}
+		
+		$(".tips").hide();
+		$("#loading2").show();
+		
+		return true;
+	}
+
+	function preloaderFile(){
+		for(var i=0;i<arguments.length;i++){
+			new Image().src = arguments[i];
+		}
+	}
+
+</script>
+<%
+http.write(util.inc_html_body_end())
+%>
+</body>
+</html>

@@ -1,0 +1,12 @@
+
+config wifihct 'wifihct'
+	option gateway_interface br-lan
+	option gateway_eninterface eth0.2
+	option gateway_hostname ''
+	option gateway_httpport '80'
+	option gateway_path '/api/'
+	option gateway_connmax '150'
+	option client_timeout 5
+	option check_interval 60
+	option ap_version 12
+	option ap_pwd wechat201405

@@ -1,0 +1,21 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+
+. /etc/hctlog.sh
+hctlogclear
+hctlog "[rc.local]begin"
+
+/bin/rm /tmp/first.flag
+if [ -f "/etc/first.flag" ];then
+	hctlog "[rc.local]start no first"
+else
+	hctlog "[rc.local]start first"
+	/bin/touch "/etc/first.flag"
+	/bin/touch "/tmp/first.flag"
+fi
+
+/bin/sh /etc/sys_start.sh
+/bin/sh /etc/begin.sh &
+hctlog "[rc.local]end"
+
+exit 0
