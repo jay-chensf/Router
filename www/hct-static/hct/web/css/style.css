@@ -194,7 +194,7 @@ min-width: 618px;
 .routers-table .signal span.level2{ background-position: 0 -29px;}
 .routers-table .signal span.level3{ background-position: 0 -58px;}
 .routers-table .setting{ width:100px;}
-.routers-table .setting .swich{ padding: 2px 5px; text-decoration: none;  cursor: pointer; font-size:12px;}
+.routers-table .setting .swich{ padding: 2px 5px; text-decoration: none; cursor: pointer; font-size:12px;}
 .routers-table .setting .swich:hover{ background: #5BC600;}
 .routers-table .setting .mac_on{ background: #5BC600; color: #fff;}
 .routers-table .setting .mac_on:hover{ background: #96da5b;}
@@ -457,7 +457,7 @@ textarea {
 #hct_main .hct_main .hct_main_container {
   width: 80px;
   position: absolute;
-  top: 35px;
+  top: 45px;
   left: 110px;
   border-bottom: none;
 }
@@ -497,7 +497,7 @@ textarea {
 #hct_main .hct_main .hct_nav {
   width: 80px;
   position: absolute;
-  top: 35px;
+  top: 45px;
   left: 210px;
   border-bottom: none;
 }
@@ -537,7 +537,7 @@ textarea {
 #hct_main .hct_main .hct_router_status {
   position: absolute;
   left: 387px;
-  top: 365px;
+  top: 355px;
   width: 210px;
   background: #00;
 }
@@ -570,6 +570,9 @@ textarea {
   background: url(../images/hct_lan_online.png) no-repeat center center;
 }
 #hct_main .hct_footer {
+  position: absolute;
+  width: 100%;
+  bottom:0px;
   background: #4fc0e8;
   text-align: center;
   padding: 10px 0 10px 0;

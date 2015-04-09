@@ -1,38 +1,43 @@
 <%
-local http = require "luci.http"
-local hct_model_uci = require "luci.model.uci"
-local hct_uci =  hct_model_uci.cursor()
+	local http = require "luci.http"
+	local hct_model_uci = require "luci.model.uci"
+	local hct_uci =  hct_model_uci.cursor()
 
-local ver  = require "luci.version"
-local urlReq = luci.util.fliter_unsafe(luci.http.formvalue("url"))
-local debugReq = luci.util.fliter_unsafe(luci.http.formvalue("debug"))
-if urlReq==nil then
-	urlReq = ""
-end
-local iscont = luci.util.is_internet_connect()
-local wifi_status,wifi_device,wifi_ifname,wifi_ssid,wifi_encryption,wifi_channel,wifi_mode,wifi_ssidprefix = luci.util.get_wifi_device_status()
-local autowantypeResp = luci.util.get_auto_wan_type_code()
-local need_check_channel = false
-if autowantypeResp ~= nil and autowantypeResp == 4 then
-    need_check_channel = false
-end
+	local ver  = require "luci.version"
+	local urlReq = luci.util.fliter_unsafe(luci.http.formvalue("url"))
+	local debugReq = luci.util.fliter_unsafe(luci.http.formvalue("debug"))
+	if urlReq==nil then
+		urlReq = ""
+	end
+	local iscont = luci.util.is_internet_connect()
+	local wifi_status,wifi_device,wifi_ifname,wifi_ssid,wifi_encryption,wifi_channel,wifi_mode,wifi_ssidprefix = luci.util.get_wifi_device_status()
+	local autowantypeResp = luci.util.get_auto_wan_type_code()
+	local need_check_channel = false
+	if autowantypeResp ~= nil and autowantypeResp == 4 then
+		need_check_channel = false
+	end
+	local sysver = luci.sys.get_sys_ver()
+	local sysid = luci.sys.get_sys_id()
 %>
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8" />
-    <title></title>
+    <title>网络诊断</title>
     <link rel='stylesheet' href='<%=resource%>/web/css/net.css?v=<%=ver.svnRevNum%>' type='text/css' media='all' />
     <script type="text/javascript" src="<%=resource%>/web/js/jquery-1.8.1.min.js?v=<%=ver.svnRevNum%>"></script>
 </head>
 <body>
 <div class="net-main">
-    <div class="header clearfix">
-    <div class="logo"><h1>网络诊断</h1></div>
-    <p class="top-bar">
-    <a class="btn-gohome" target="_blank" href="<%=luci.dispatcher.build_url('admin_web')%>">路由器后台</a>
-    </p>
-    </div>
+	<div class="header clearfix">
+		<div class="logo"><h1>网络诊断</h1></div>
+		<div class="top-bar">
+			<ul>
+				<li><a href="<%=luci.dispatcher.build_url('admin_web')%>" class="btn-gohome" target="_blank" title="路由器后台">路由器后台</a></li>
+			</ul>
+		</div>
+	</div>
+
     <div class="con-wrap">
         <div class="follow-bar">
             <div class="item item1">
@@ -44,50 +49,26 @@ end
                 <p id="me-hctwifi" class="normal-right"></p>
             </div>
             <div class="item item2">
-                <p><%http.write(hct_uci:get("consumer", "web", "bin_desc"))%></span></p>
+				<div class="pic router"></div>
+                <p><span class="name"><%http.write(hct_uci:get("consumer", "web", "bin_desc"))%></span></p>
             </div>
             <div class="arrow-bar state2">
                 <p id="hctwifi-icp"></p>
             </div>
             <div class="item item3">
-                <p>宽带运营商</span></p>
+				<div class="pic web"></div>
+                <p><span class="name">宽带运营商</span></p>
             </div>
-            <div class="arrow-bar state3">
-            </div>
-            <div class="item item4">
-            </div>
-            <div id="pop-state1" class="error-pop pop-state1 yellow" style="display:none">
-                <div class="point"></div>
-                <div class="bd">
-                <span class="icon-i"></span>
-                <p class="title"></p>
-                <p class="info"></p>
-                </div>
-            </div>
-            <div id="pop-state2" class="error-pop pop-state2 yellow" style="display:none">
-                <div class="point"></div>
-                <div class="bd">
+			
+			<div id="pop-state2" class="error-pop pop-state2 yellow" style="display:none">
+                
+                <div class="bd" >
                     <span class="icon-x"></span>
                     <p class="title"></p>
                     <p class="info"></p>
                 </div>
             </div>
-            <div id="pop-state3" class="error-pop pop-state3 red" style="display:none">
-                <div class="point"></div>
-                <div class="bd">
-                    <span class="icon-x"></span>
-                    <p class="title"></p>
-                    <p class="info"></p>
-                </div>
-            </div>
-            <div id="pop-state4" class="error-pop pop-state4 yellow" style="display:none">
-                <div class="point"></div>
-                <div class="bd">
-                    <span class="icon-i"></span>
-                    <p class="title"></p>
-                    <p class="info"></p>
-                </div>
-            </div>
+			
         </div>
     </div>
     <div class="info-box">
@@ -120,7 +101,19 @@ end
     </div>
 </div>
 <div class="mask" style="display: none"></div>
+<div class="net-footer">
+	<p class="system_info">系统版本 : <%=sysver%><span class="pipe"></span> 
+		路由ID : <span id="buttonid"><%=sysid%></span><span class="pipe"></span>
+		MAC : <span id="buttonmac"><%http.write(tw.get_mac())%></span><span class="pipe"></span>
+		服务热线 : <span id="iphonenum"><%http.write(hct_uci:get("consumer", "web", "phone"))%></span>
+	</p>
+	<p class="bottom_menu">
+			<%http.write(hct_uci:get("consumer", "web", "copyright_desc"))%>
+			<span class="pipe">|</span><a href="<%http.write(hct_uci:get("consumer", "web", "url"))%>" target="_blank">官方网站</a>
+	</p>
+</div>
 </body>
+
 <script type="text/javascript">
 var debug = "<%=debugReq%>";
 var set_net_url = "<%=luci.dispatcher.build_url("admin_web")%>?act=set_network";

@@ -645,10 +645,12 @@ http.write(util.inc_html_body_end())
 		<div class="hct_main">
 			<div class="hct_main_container">
 				<ul>
-					<li><a href="#" id="set_network" class="hct_step_01" title="外网设置">外网设置</a></li>
-					<li><a href="#" id="set_wifi" class="hct_step_02" title="无线设置">无线设置</a></li>
-					<li><a href="#" id="system_config" class="hct_step_03" title="密码修改">密码修改</a></li>
-					<li><a href="<%=luci.dispatcher.build_url("admin_web","system","net_detect")%>" id="system_netdetect" class="hct_step_04" target="_blank" title="网络诊断">网络诊断</a></li>
+					<li><a href="<%http.write(hct_uci:get("consumer", "web", "url"))%>" target="_blank" class="hct_step_01" title="网站首页">网站首页</a></li>
+					<li><a href="#" id="set_network" class="hct_step_02" title="外网设置">外网设置</a></li>
+					<li><a href="#" id="set_wifi" class="hct_step_03" title="无线设置">无线设置</a></li>
+					<li><a href="#" id="options" class="hct_step_04" title="高级设置">高级设置</a></li>
+					
+					
 				</ul>
 				<div class="hct_router_status">
 					<ul>
@@ -662,9 +664,9 @@ http.write(util.inc_html_body_end())
 			</div>
 			<div class="hct_nav">
 				<ul>
-					<li><a href="<%http.write(hct_uci:get("consumer", "web", "url"))%>" target="_blank" class="hct_nav_01" title="网站首页">网站首页</a></li>
-					<li><a href="#" id="state" class="hct_nav_02" title="系统状态">系统状态</a></li>
-					<li><a href="#" id="options" class="hct_nav_03" title="高级设置">高级设置</a></li>
+					<li><a href="#" id="system_config" class="hct_nav_01" title="密码修改">密码修改</a></li>
+					<li><a href="<%=luci.dispatcher.build_url("admin_web","system","net_detect")%>" id="system_netdetect" class="hct_nav_02" target="_blank" title="网络诊断">网络诊断</a></li>
+					<li><a href="#" id="state" class="hct_nav_03" title="系统状态">系统状态</a></li>
 					<li><a href="#" id="traffic_info" class="hct_nav_04" title="实时流量">实时流量</a></li>
 				</ul>
 			</div>
